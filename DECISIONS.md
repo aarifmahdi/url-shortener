@@ -44,6 +44,7 @@
   get misinterpreted in query strings).
 
 ## Project structure (locked for v1)
+```
 url_shortener/
 ├── app/
 │   ├── main.py            # creates FastAPI() app, includes routers — thin assembler only
@@ -55,7 +56,7 @@ url_shortener/
 │       └── url_routes.py    # APIRouter with the 2 v1 endpoints
 ├── requirements.txt
 └── README.md
-
+```
 - models.py = SQLAlchemy (DB shape) vs schemas.py = Pydantic (API request/response shape) —
   standard convention across FastAPI codebases, avoids ambiguity of the word "model."
 - routers/ (plural) anticipates future route files by topic (e.g. auth_routes.py in Phase: Auth),
@@ -69,3 +70,49 @@ url_shortener/
 - I will build a simple frontend page (input long URL, receive/display short URL) — first FE
   usage in this project. Not yet designed; v1 backend still returns JSON, frontend is a separate
   future consumer of the API, not server-rendered HTML/templates.
+
+  ## Database choice: PostgreSQL over SQLite
+- SQLite locks the entire database file on writes; PostgreSQL uses row-level locking and
+  supports many concurrent connections. For v1's traffic this alone isn't decisive, but it
+  matters once analytics logging is added (see below).
+- PostgreSQL runs as its own standalone service, separate from the FastAPI app process. This
+  means other programs (analytics scripts, admin tools, future rate-limiting logic) can connect
+  to and interact with the same database independently of the app — something a single-file
+  SQLite database doesn't support as cleanly.
+- Correction made during reasoning: initially assumed the GET /{short_code} redirect alone would
+  bump into SQLite's write lock. That's wrong — a redirect lookup is a read, and reads don't
+  trigger write locks. The real pressure comes from the future analytics phase.
+
+-> Future (Phase: Analytics): once click-logging is added, each redirect becomes a read + write
+   (look up short code, then log the hit). This is where SQLite's whole-file write lock would
+   become a real bottleneck under load — the actual justification for choosing Postgres now,
+   even though v1 traffic doesn't strictly require it yet.
+
+## Async architecture: async def + asyncpg + async SQLAlchemy
+- Chose async throughout (routes, driver, ORM session) since this app is I/O-bound — most work
+  is waiting on DB round trips, not CPU computation.
+- Correction made during reasoning: async does NOT make a single request faster. It doesn't speed
+  up any individual operation — a single request takes roughly the same time whether async or sync.
+  The actual benefit is throughput under concurrent load: while one request is waiting on I/O
+  (e.g. a DB call), the event loop can process other requests instead of sitting idle. This is
+  concurrency (interleaved work on one thread/process), not parallelism (simultaneous execution
+  across CPU cores) — those are different things.
+- Driver: async requires an async-native driver end-to-end. Using a sync driver (e.g. psycopg2)
+  inside async def routes would silently block the whole event loop during DB calls, defeating
+  the purpose. Chose asyncpg (async-native) + SQLAlchemy's async mode (AsyncSession,
+  create_async_engine) to keep every layer of the chain async — the weakest sync link blocks
+  everything, so consistency matters more than any single layer being async.
+- Correct framing for interviews: "chosen because the app is I/O-bound, and async improves
+  throughput under concurrent load — not the speed of any single request."
+
+-> Future (Phase: Deployment/Scale): a single async server instance is not how apps like
+   Netflix/Instagram/Uber handle millions of users. That requires horizontal scaling — many
+   server instances behind a load balancer, each handling a manageable slice of traffic — plus
+   database-side scaling (read replicas, sharding) and caching layers (Redis, CDNs). Async is a
+   per-instance efficiency technique; horizontal scaling is the separate mechanism that gets you
+   from "handles hundreds well" to "handles millions." Not needed for v1, but good to know exists.
+-> Future (Phase: Auth): statelessness matters here — no server instance should hold user-specific
+   data in its own memory between requests (so any instance can serve any user's next request).
+   Session/login state should live in the DB or be carried by the client itself (e.g. JWT), not
+   in server memory. The app is naturally stateless right now since nothing is stored outside
+   Postgres; keep it that way when auth is added.
