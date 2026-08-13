@@ -11,9 +11,10 @@ in [DECISIONS.md](./DECISIONS.md).
 - Project structure, schema, and short-code strategy designed and documented
 - PostgreSQL database configured
 - Async architecture decided (FastAPI + asyncpg + async SQLAlchemy)
+- `database.py` and `models.py`
 
 **Next:**
-- `database.py`, `models.py`, `crud.py` implementation
+- base62 encoding and `crud.py` implementation
 - Core endpoints: create short URL, redirect
 - Simple frontend (submit long URL, display short URL)
 
