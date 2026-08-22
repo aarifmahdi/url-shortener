@@ -39,4 +39,39 @@ See [DECISIONS.md](./DECISIONS.md) for full reasoning behind schema, database ch
 async architecture.
 
 ## How to Run Locally
-> ⚠️ Setup instructions coming once the core endpoints are implemented.
+
+1. Clone the repo and create a virtual environment:
+```bash
+   git clone https://github.com/aarifmahdi/url-shortener.git
+   cd url-shortener
+   python -m venv venv
+   venv\Scripts\activate       # Windows
+```
+
+2. Install dependencies:
+```bash
+   pip install -r requirements.txt
+```
+
+3. Set up PostgreSQL and create a database (e.g. `url_shortener_db`).
+
+4. Copy `.env.example` to `.env` and fill in your values:
+DB_USER=your_db_user
+DB_PASSWORD=your_db_password
+DB_HOST=localhost
+DB_PORT=5432
+DB_NAME=url_shortener_db
+BASE_URL=http://localhost:8000
+
+
+5. Run database migrations:
+```bash
+   alembic upgrade head
+```
+
+6. Start the server (must be run from the project root):
+```bash
+   uvicorn app.main:app --reload
+```
+
+7. Open `http://localhost:8000/docs` to try the API interactively.
