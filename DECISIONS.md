@@ -24,7 +24,8 @@
 - id: surrogate PK, auto-incrementing integer. Chosen over short_code as PK — short_code is
   business data (can legitimately change later, e.g. collisions or a future "custom alias" feature),
   and a PK referenced by future FK's (e.g. analytics clicks table) should never need to change.
-- short_code: unique, indexed (free via unique constraint).
+- short_code: unique, indexed (free via unique constraint), short_code is nullable because the short code
+  is derived from the row's auto-incrementing id (base62-encoded), which only exists after insert. The row is created first with short_code = NULL, then updated with the generated code.
 - long_url: VARCHAR(2048) — 2048 is the commonly cited de facto practical URL length ceiling.
   NOT NULL — app-level validation already prevents missing long_url, but DB-level constraint is
   a backup against bugs or future direct DB writes bypassing the app.
