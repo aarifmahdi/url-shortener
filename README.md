@@ -5,18 +5,20 @@ portfolio project, with real architectural decisions documented
 in [DECISIONS.md](./DECISIONS.md).
 
 ## Status
-🚧 In progress — backend setup phase.
+v1 backend completed.
 
 **Done:**
 - Project structure, schema, and short-code strategy designed and documented
 - PostgreSQL database configured
 - Async architecture decided (FastAPI + asyncpg + async SQLAlchemy)
 - `database.py` and `models.py`
-
-**Next:**
 - base62 encoding and `crud.py` implementation
 - Core endpoints: create short URL, redirect
+
+**Next:**
+- SQA Testing 
 - Simple frontend (submit long URL, display short URL)
+- Deployment (Docker, CI/CD, cloud hosting)
 
 **Planned (future phases):** authentication, click analytics, rate limiting.
 
